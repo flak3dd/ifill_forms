@@ -13,6 +13,7 @@
 2. **Start with Docker**
    ```bash
    docker-compose up -d
+   
    ```
 
 3. **Access the Application**
@@ -29,7 +30,7 @@
 cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 
 # Install Playwright browsers
 playwright install chromium

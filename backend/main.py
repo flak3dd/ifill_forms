@@ -18,6 +18,7 @@ from .ai_mapper import AIMapper
 from .job_manager import JobManager
 from .api.profiles import router as profiles_router
 from .api.mapping import router as mapping_router
+from .api.workflows import router as workflows_router
 
 # Configuration
 from .config import settings
@@ -50,7 +51,7 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8080"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:8080"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,6 +60,7 @@ app.add_middleware(
 # Include new API routers
 app.include_router(profiles_router)
 app.include_router(mapping_router)
+app.include_router(workflows_router)
 
 # WebSocket connections manager
 class ConnectionManager:
@@ -86,56 +88,7 @@ manager = ConnectionManager()
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow()}
 
-# Profile endpoints
-@app.post("/api/profiles", response_model=ProfileRead)
-async def create_profile(
-    profile: ProfileCreate,
-    session: Session = Depends(get_session)
-):
-    db_profile = Profile.model_validate(profile)
-    session.add(db_profile)
-    session.commit()
-    session.refresh(db_profile)
-    return db_profile
-
-@app.get("/api/profiles", response_model=List[ProfileRead])
-async def list_profiles(session: Session = Depends(get_session)):
-    profiles = session.exec(select(Profile)).all()
-    return profiles
-
-@app.get("/api/profiles/{profile_id}", response_model=ProfileRead)
-async def get_profile(profile_id: str, session: Session = Depends(get_session)):
-    profile = session.get(Profile, profile_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    return profile
-
-@app.put("/api/profiles/{profile_id}", response_model=ProfileRead)
-async def update_profile(
-    profile_id: str,
-    profile_update: ProfileCreate,
-    session: Session = Depends(get_session)
-):
-    profile = session.get(Profile, profile_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    
-    profile_data = profile_update.model_dump(exclude_unset=True)
-    for key, value in profile_data.items():
-        setattr(profile, key, value)
-    
-    session.commit()
-    session.refresh(profile)
-    return profile
-
-@app.delete("/api/profiles/{profile_id}")
-async def delete_profile(profile_id: str, session: Session = Depends(get_session)):
-    profile = session.get(Profile, profile_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    session.delete(profile)
-    session.commit()
-    return {"message": "Profile deleted"}
+# Profile endpoints are provided by api/profiles.py router (enhanced with versioning, workflow builder, field mapping)
 
 # Site analysis endpoints
 @app.post("/api/analyze-site")

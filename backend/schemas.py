@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from .models import JobStatus, LogLevel
+from .models import JobStatus, LogLevel, WorkflowStatus
 
 # Profile schemas
 class ProfileBase(BaseModel):
@@ -378,3 +378,66 @@ class CreateProfileFromDetection(BaseModel):
     detected_fields: List[ProfileFieldCreate]
     detected_steps: List[WorkflowStepCreate]
     success_indicators: Optional[Dict[str, Any]] = None
+
+
+# ===== Automation Workflow Schemas =====
+
+class ScanUrlRequest(BaseModel):
+    url: str
+    name: Optional[str] = None
+
+class ScanUrlResponse(BaseModel):
+    workflow_id: str
+    name: str
+    target_url: str
+    page_title: Optional[str] = None
+    detected_fields: Dict[str, Any]
+    confidence: float
+    screenshot_url: Optional[str] = None
+
+class WorkflowRead(BaseModel):
+    id: str
+    name: str
+    target_url: str
+    description: Optional[str] = None
+    status: WorkflowStatus
+    detected_fields: Dict[str, Any]
+    custom_selectors: Dict[str, Any]
+    credentials_file: Optional[str] = None
+    credential_count: int
+    delay_between_logins: float
+    use_stealth: bool
+    max_retries: int
+    success_indicators: Dict[str, Any]
+    total_credentials: int
+    processed_count: int
+    successful_count: int
+    failed_count: int
+    results: List[Dict[str, Any]]
+    created_at: datetime
+    updated_at: datetime
+
+class WorkflowUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    custom_selectors: Optional[Dict[str, Any]] = None
+    delay_between_logins: Optional[float] = None
+    use_stealth: Optional[bool] = None
+    max_retries: Optional[int] = None
+    success_indicators: Optional[Dict[str, Any]] = None
+
+class CredentialPasteRequest(BaseModel):
+    text: str
+    format: Optional[str] = None  # "txt" or "csv"; auto-detected if omitted
+
+class CredentialUploadResponse(BaseModel):
+    workflow_id: str
+    credential_count: int
+    sample_usernames: List[str]
+    status: WorkflowStatus
+
+class WorkflowRunResponse(BaseModel):
+    workflow_id: str
+    status: WorkflowStatus
+    message: str
+    total_credentials: int

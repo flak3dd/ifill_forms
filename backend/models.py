@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import JSON, Column
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
@@ -23,10 +24,10 @@ class Profile(SQLModel, table=True):
     description: Optional[str] = None
     base_url: str
     version: int = 1
-    steps: Dict[str, Any] = Field(default_factory=dict)  # JSON workflow steps
-    field_mappings: Dict[str, Any] = Field(default_factory=dict)  # CSV column to field mappings
-    success_indicators: Dict[str, Any] = Field(default_factory=dict)
-    ai_hints: Dict[str, Any] = Field(default_factory=dict)
+    steps: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)  # JSON workflow steps
+    field_mappings: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)  # CSV column to field mappings
+    success_indicators: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
+    ai_hints: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -37,6 +38,11 @@ class Profile(SQLModel, table=True):
     
     # Relationships
     jobs: List["Job"] = Relationship(back_populates="profile")
+    profile_fields: List["ProfileField"] = Relationship(back_populates="profile")
+    workflow_steps: List["WorkflowStep"] = Relationship(back_populates="profile")
+    versions: List["ProfileVersion"] = Relationship(back_populates="profile")
+    column_mappings: List["ColumnMapping"] = Relationship(back_populates="profile")
+    mapping_sessions: List["MappingSession"] = Relationship(back_populates="profile")
 
 class JobStatus(str, Enum):
     PENDING = "pending"
@@ -60,7 +66,7 @@ class Job(SQLModel, table=True):
     proxy_group: Optional[str] = None
     
     # Data source
-    data_source: Dict[str, Any] = Field(default_factory=dict)  # File path, URL, etc.
+    data_source: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)  # File path, URL, etc.
     total_rows: int = 0
     processed_rows: int = 0
     successful_rows: int = 0
@@ -72,7 +78,7 @@ class Job(SQLModel, table=True):
     estimated_completion: Optional[datetime] = None
     
     # Results
-    output_data: Dict[str, Any] = Field(default_factory=dict)  # Extracted data, confirmations, etc.
+    output_data: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)  # Extracted data, confirmations, etc.
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -97,7 +103,7 @@ class ExecutionLog(SQLModel, table=True):
     id: Optional[str] = Field(default=None, primary_key=True)
     level: LogLevel = LogLevel.INFO
     message: str
-    details: Dict[str, Any] = Field(default_factory=dict)  # Additional context, screenshots, etc.
+    details: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)  # Additional context, screenshots, etc.
     
     # Row-specific info
     row_index: Optional[int] = None
@@ -189,7 +195,7 @@ class ProfileField(SQLModel, table=True):
     # Locator strategy (layered)
     locator_type: str = Field(default="css")  # LocatorType value
     locator_value: str
-    locator_fallback: Optional[Dict[str, Any]] = Field(default=None, sa_type=dict)
+    locator_fallback: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSON)
     
     # Validation rules
     validation_regex: Optional[str] = None
@@ -197,7 +203,7 @@ class ProfileField(SQLModel, table=True):
     max_length: Optional[int] = None
     
     # Options for select/checkbox/radio
-    options: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=list)
+    options: Optional[List[Dict[str, str]]] = Field(default=None, sa_type=JSON)
     
     # Metadata
     is_visible: bool = Field(default=True)
@@ -231,7 +237,7 @@ class WorkflowStep(SQLModel, table=True):
     order_index: int
     
     # Step-specific configuration
-    config: Dict[str, Any] = Field(default_factory=dict, sa_type=dict)
+    config: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
     
     # Conditional execution
     condition: Optional[str] = None  # Jinja2 expression
@@ -269,7 +275,7 @@ class ProfileVersion(SQLModel, table=True):
     id: Optional[str] = Field(default=None, primary_key=True)
     
     version_number: int
-    snapshot: Dict[str, Any] = Field(sa_type=dict)  # Full profile JSON snapshot
+    snapshot: Dict[str, Any] = Field(sa_type=JSON)  # Full profile JSON snapshot
     change_summary: Optional[str] = None
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -291,10 +297,10 @@ class ColumnMapping(SQLModel, table=True):
     
     # CSV column info
     csv_column_name: str
-    csv_sample_values: Optional[List[str]] = Field(default=None, sa_type=list)
+    csv_sample_values: Optional[List[str]] = Field(default=None, sa_type=JSON)
     
     # Target field mapping
-    field_id: Optional[str] = Field(default=None, foreign_key="profile_field.id")
+    field_id: Optional[str] = Field(default=None, foreign_key="profile_fields.id")
     semantic_tag: Optional[str] = None
     
     # Transformation
@@ -327,8 +333,8 @@ class MappingSession(SQLModel, table=True):
     
     id: Optional[str] = Field(default=None, primary_key=True)
     
-    csv_headers: List[str] = Field(sa_type=list)
-    csv_sample_rows: List[Dict[str, Any]] = Field(sa_type=list)
+    csv_headers: List[str] = Field(sa_type=JSON)
+    csv_sample_rows: List[Dict[str, Any]] = Field(sa_type=JSON)
     
     is_complete: bool = Field(default=False)
     
@@ -342,14 +348,71 @@ class MappingSession(SQLModel, table=True):
     mappings: List["ColumnMapping"] = Relationship(back_populates="mapping_session")
 
 
-# Update Profile model with relationships
-Profile.profile_fields: List[ProfileField] = Relationship(back_populates="profile")
-Profile.workflow_steps: List[WorkflowStep] = Relationship(back_populates="profile")
-Profile.versions: List[ProfileVersion] = Relationship(back_populates="profile")
-Profile.column_mappings: List[ColumnMapping] = Relationship(back_populates="profile")
-Profile.mapping_sessions: List[MappingSession] = Relationship(back_populates="profile")
+# Login Automation Workflow Models
+
+class WorkflowStatus(str, Enum):
+    DRAFT = "draft"
+    READY = "ready"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    STOPPED = "stopped"
+
+
+class AutomationWorkflow(SQLModel, table=True):
+    """A login automation workflow: URL scan + credentials + execution."""
+    __tablename__ = "automation_workflow"
+    
+    id: Optional[str] = Field(default=None, primary_key=True)
+    
+    name: str
+    target_url: str
+    description: Optional[str] = None
+    status: WorkflowStatus = WorkflowStatus.DRAFT
+    
+    # Detected login form selectors
+    detected_fields: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
+    # Example: {
+    #   "username_selector": "input#email",
+    #   "password_selector": "input#password",
+    #   "submit_selector": "button[type=submit]",
+    #   "username_label": "Email",
+    #   "password_label": "Password",
+    #   "submit_label": "Sign In",
+    #   "form_action": "/login",
+    #   "extra_fields": [...],
+    #   "page_title": "Login Page"
+    # }
+    
+    # User-edited selectors (overrides detected)
+    custom_selectors: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
+    
+    # Credentials file info
+    credentials_file: Optional[str] = None  # Path to uploaded file
+    credential_count: int = 0
+    
+    # Execution settings
+    delay_between_logins: float = 2.0  # seconds
+    use_stealth: bool = True
+    max_retries: int = 1
+    
+    # Success detection
+    success_indicators: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
+    # Example: {"url_change": true, "selector": ".dashboard", "text_contains": "Welcome"}
+    
+    # Results
+    total_credentials: int = 0
+    processed_count: int = 0
+    successful_count: int = 0
+    failed_count: int = 0
+    results: List[Dict[str, Any]] = Field(default_factory=list, sa_type=JSON)
+    # Each result: {"username": "...", "status": "success"|"failed", "message": "...", "timestamp": "..."}
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 # Create tables
 def create_db_and_tables():
+    from .database import engine
     SQLModel.metadata.create_all(engine)

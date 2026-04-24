@@ -5,6 +5,7 @@ import random
 from typing import Dict, Any, List, Optional, Tuple
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 from playwright_stealth import stealth_async
+from .anti_bot import build_anti_bot_context_options, install_anti_bot_initial_scripts
 from .config import settings
 from .models import Profile
 import logging
@@ -60,6 +61,7 @@ class BrowserEngine:
         context = await self.browser.new_context(**context_options)
         
         if use_stealth:
+            await install_anti_bot_initial_scripts(context)
             await stealth_async(context)
         
         self.contexts[job_id] = context

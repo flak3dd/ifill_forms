@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     BROWSER_HEADLESS: bool = True
     BROWSER_TIMEOUT: int = 30000
     BROWSER_CONCURRENCY: int = 5
+    ANTI_BOT_ENABLED: bool = True
+    ANTI_BOT_MODE: str = "advanced"
     
     # File Storage
     UPLOAD_DIR: str = "./uploads"
@@ -46,5 +48,6 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 settings = Settings()
